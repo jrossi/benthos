@@ -23,6 +23,7 @@ package reader
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -102,6 +103,9 @@ func NewKafkaBalanced(
 		log:         log,
 		offsets:     map[string]map[int32]int64{},
 		mRebalanced: stats.GetCounter("rebalanced"),
+	}
+	if conf.MaxBatchCount < 1 {
+		return nil, errors.New("max_batch_count must be greater than or equal to 1")
 	}
 	if conf.TLS.Enabled {
 		var err error
@@ -247,7 +251,7 @@ func (k *KafkaBalanced) Connect() error {
 		group.Close()
 	}()
 
-	k.msgChan = make(chan *sarama.ConsumerMessage)
+	k.msgChan = make(chan *sarama.ConsumerMessage, k.conf.MaxBatchCount)
 	k.group = group
 	k.offsets = map[string]map[int32]int64{}
 
